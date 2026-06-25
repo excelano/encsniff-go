@@ -1,0 +1,19 @@
+# Dependabot keeps Go module dependencies current so security fixes show up
+# as PRs rather than slipping past. This tool has no external module
+# dependencies today (pure standard library); the gomod entry is here so any
+# future ones are tracked from the start. Bumps are grouped into one weekly PR
+# so they share a single lockfile change. Add a github-actions ecosystem if a
+# workflow is introduced under .github/workflows/.
+version: 2
+updates:
+  - package-ecosystem: gomod
+    directory: "/"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "deps"
+    groups:
+      go-modules:
+        patterns:
+          - "*"
