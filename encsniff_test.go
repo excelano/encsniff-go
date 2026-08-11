@@ -10,11 +10,11 @@ import (
 
 func TestSniffBytes(t *testing.T) {
 	tests := []struct {
-		name     string
-		input    []byte
-		wantAct  Action
-		wantEnc  Encoding
-		wantBom  int
+		name    string
+		input   []byte
+		wantAct Action
+		wantEnc Encoding
+		wantBom int
 	}{
 		{
 			name:    "empty",
