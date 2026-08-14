@@ -196,3 +196,119 @@ func TestUtf8SiblingPath(t *testing.T) {
 		})
 	}
 }
+
+func TestSniffBytesLatin1IsNotUseAsIs(t *testing.T) {
+	// "café" in Latin-1: 0xE9 sits in front of a newline, which cannot be a
+	// continuation byte, so the bytes are decidably not UTF-8.
+	got := SniffBytes([]byte("name,city\nDavid,caf\xE9\n"))
+	if got.Action != WarnUnknown {
+		t.Errorf("a CP1252/Latin-1 export must not assert it is usable as-is; got %v", got.Action)
+	}
+	if got.Encoding != "" {
+		t.Errorf("nothing was proven about which encoding it is; got %q", got.Encoding)
+	}
+}
+
+func TestSniffBytesFlagsInvalidByteAtVeryEnd(t *testing.T) {
+	// 0xFF can never appear in UTF-8 at all, so no truncation story excuses it.
+	if got := SniffBytes([]byte("ok,\xFF")); got.Action != WarnUnknown {
+		t.Errorf("got %v, want WarnUnknown", got.Action)
+	}
+}
+
+func TestSniffBytesDoesNotFlagRuneCutByScanWindow(t *testing.T) {
+	// The trap the whole check has to survive: a 3-byte rune starting at 4094
+	// leaves two of its bytes inside the window and one outside. The file is
+	// perfectly good UTF-8; only our view of it is truncated.
+	input := append(bytes.Repeat([]byte("a"), scanWindow-2), []byte("€")...)
+	if len(input) != scanWindow+1 {
+		t.Fatalf("test setup: input is %d bytes, want %d", len(input), scanWindow+1)
+	}
+	if got := SniffBytes(input); got.Action != UseAsIs {
+		t.Errorf("a rune straddling the window boundary is not a broken file; got %v", got.Action)
+	}
+}
+
+func TestSniffBytesDoesNotFlagTruncatedRuneAtEndOfInput(t *testing.T) {
+	euro := []byte("€")
+	if got := SniffBytes(euro[:2]); got.Action != UseAsIs {
+		t.Errorf("got %v, want UseAsIs", got.Action)
+	}
+}
+
+func TestSniffBytesDoesNotFlagLoneHighByteAtEndOfInput(t *testing.T) {
+	// Looks like a bug and is not. 0xE9 is a legal lead byte for a 3-byte rune,
+	// so as the final byte it is indistinguishable from a rune the window cut in
+	// half, and truncation is never flagged. Real Latin-1 files are unaffected:
+	// 4KB of legacy text puts high bytes in front of ASCII repeatedly, and each
+	// of those is a genuine error. Only a file ending exactly on one is quiet,
+	// which is the price of never crying wolf on a good file.
+	if got := SniffBytes([]byte("caf\xE9")); got.Action != UseAsIs {
+		t.Errorf("lone trailing lead byte: got %v, want UseAsIs", got.Action)
+	}
+	if got := SniffBytes([]byte("caf\xE9\n")); got.Action != WarnUnknown {
+		t.Errorf("lead byte followed by a non-continuation: got %v, want WarnUnknown", got.Action)
+	}
+}
+
+func TestSniffBytesFlagsOverlongAndSurrogate(t *testing.T) {
+	// Well-formed in shape, illegal in UTF-8. Enough bytes are present in each
+	// case, so truncation cannot be the explanation.
+	for _, tc := range []struct {
+		name string
+		in   []byte
+	}{
+		{"overlong NUL", []byte("a\xC0\x80b")},
+		{"surrogate half", []byte("a\xED\xA0\x80b")},
+		{"bad continuation", []byte("a\xE2\x28\xA1b")},
+	} {
+		if got := SniffBytes(tc.in); got.Action != WarnUnknown {
+			t.Errorf("%s: got %v, want WarnUnknown", tc.name, got.Action)
+		}
+	}
+}
+
+func TestIsWarning(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		in   []byte
+		want bool
+	}{
+		{"latin-1", []byte("caf\xE9\n"), true},
+		{"utf-16le bom", []byte{0xFF, 0xFE}, true},
+		{"plain ascii", []byte("plain ascii"), false},
+		{"utf-8 bom", []byte{0xEF, 0xBB, 0xBF}, false},
+	} {
+		if got := SniffBytes(tc.in).IsWarning(); got != tc.want {
+			t.Errorf("%s: IsWarning() = %v, want %v", tc.name, got, tc.want)
+		}
+	}
+}
+
+func TestSniffFileHintsAtConversionForUnnameableEncoding(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "l1.csv")
+	if err := os.WriteFile(path, []byte("name\ncaf\xE9\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got, err := SniffFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Action != WarnUnknown {
+		t.Fatalf("got %v, want WarnUnknown", got.Action)
+	}
+	if got.Encoding != "" {
+		t.Errorf("encoding should stay empty; got %q", got.Encoding)
+	}
+	for _, want := range []string{"WINDOWS-1252", "LATIN1", "l1.utf8.csv"} {
+		if !strings.Contains(got.Hint, want) {
+			t.Errorf("hint %q does not mention %q", got.Hint, want)
+		}
+	}
+	// Worded as a suggestion, because unlike every other hint here it does not
+	// follow from a signature.
+	if !strings.HasPrefix(got.Hint, "if this is") {
+		t.Errorf("hint should read as a suggestion, not a claim; got %q", got.Hint)
+	}
+}
