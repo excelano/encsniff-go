@@ -1,6 +1,6 @@
 # encsniff-go
 
-A small Go library for sniffing common non-UTF-8 text encodings at the head of a file or byte slice. It detects only patterns with byte-perfect signatures — no heuristics. It returns an action (use as is, strip BOM, or warn) and a copy-pasteable `iconv` hint when conversion is needed.
+A small Go library for sniffing common non-UTF-8 text encodings at the head of a file or byte slice. It detects only patterns with byte-perfect signatures — no heuristics. It returns an action (use as is, strip BOM, or warn — naming the encoding where it can) and a copy-pasteable `iconv` hint when conversion is needed.
 
 Companion to [`encsniff`](https://github.com/excelano/encsniff) (Rust).
 

@@ -8,11 +8,13 @@ Please do not open public issues for security problems.
 
 ## Supported versions
 
-The latest v0.x release receives security fixes. Older versions are not supported.
+The latest release receives security fixes. Older versions are not supported.
 
 ## What encsniff-go can access
 
-encsniff-go is a library, not a service. `SniffBytes` inspects a byte slice you pass it and never touches the filesystem or network. `SniffFile` opens the path you give it, reads only the first few bytes to check for a known signature, and closes it. It does no writes, makes no network calls, runs no subprocesses, and stores nothing. It detects only byte-perfect signatures (UTF-8 BOM, UTF-16 LE/BE) — there is no heuristic parsing of file contents and no execution of anything the file contains.
+encsniff-go is a library, not a service. `SniffBytes` inspects a byte slice you pass it and never touches the filesystem or network. `SniffFile` opens the path you give it, reads only the head of the file to check for a known signature and to test whether those bytes are valid UTF-8, and closes it. It does no writes, makes no network calls, runs no subprocesses, and stores nothing. It detects only byte-perfect signatures (UTF-8 BOM, UTF-16 LE/BE, the UTF-7 escape) and UTF-8 validity — there is no heuristic parsing of file contents and no execution of anything the file contains.
+
+`IconvCommand` and `IconvGuessCommand` compose an `iconv` command as a string for the caller to display. Neither is ever run, and nothing in this package executes a shell.
 
 ## What encsniff-go stores
 
