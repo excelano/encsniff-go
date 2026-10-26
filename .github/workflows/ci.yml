@@ -3,6 +3,10 @@ name: ci
 # The checks live in excelano/.github. This module is imported by other code,
 # so it calls the library policy: the binary checks plus a run against the
 # oldest Go version go.mod promises consumers.
+#
+# Author: David M. Anderson
+# Built with AI assistance (Claude, Anthropic)
+
 on:
   workflow_dispatch:
 

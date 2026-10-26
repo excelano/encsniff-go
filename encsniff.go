@@ -1,3 +1,6 @@
+// Author: David M. Anderson
+// Built with AI assistance (Claude, Anthropic)
+
 // Package encsniff detects common non-UTF-8 text encodings from the head of a
 // file or byte slice, using only byte-perfect signatures — no heuristics.
 //
