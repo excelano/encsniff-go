@@ -34,6 +34,11 @@ case encsniff.WarnUnknown:
 
 `SniffBytes(b []byte) Sniff` is the in-memory version.
 
+A caller that only needs to know whether to tell the user something should ask
+`s.IsWarning()`, which is true for `Warn` and `WarnUnknown`, rather than compare
+against `encsniff.Warn`. A comparison misses `WarnUnknown`, and would miss any
+warning verdict added later.
+
 ## What it detects
 
 | Pattern | Action | Why |
@@ -68,4 +73,4 @@ No heuristic encoding detection. CP1252 vs Latin-1, language-based detection, by
 
 ## License
 
-MIT.
+MIT. See [LICENSE](LICENSE).
